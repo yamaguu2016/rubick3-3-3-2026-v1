@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>空間認知マスター v2 - 完全版</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(135deg, #050510 0%, #0a0a20 50%, #080818 100%);
+      font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+    }
+    
+    canvas { display: block; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+
+    #left-panel {
+      position: fixed;
+      left: 15px;
+      top: 15px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 260px;
+    }
+    
+    .card {
+      padding: 14px 18px;
+      background: rgba(8, 12, 28, 0.92);
+      color: #e0e0e0;
+      font-size: 12px;
+      border-radius: 12px;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(80, 160, 255, 0.25);
+      line-height: 1.7;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    }
+    
+    .card h3 {
+      margin: 0 0 10px 0;
+      color: #5ac8fa;
+      font-size: 14px;
+    }
+    
+    .key {
+      display: inline-block;
+      background: rgba(90, 200, 250, 0.15);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+      border: 1px solid rgba(90, 200, 250, 0.3);
+      color: #5ac8fa;
+    }
+
+    .level-card {
+      text-align: center;
+      padding: 18px;
+      background: linear-gradient(135deg, rgba(90, 200, 250, 0.08), rgba(168, 85, 247, 0.08));
+      border: 2px solid rgba(90, 200, 250, 0.35);
+    }
+    
+    .level-title { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+    
+    .level-name {
+      font-size: 22px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #5ac8fa, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .level-progress { margin-top: 10px; height: 5px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; }
+    .level-bar { height: 100%; background: linear-gradient(90deg, #5ac8fa, #a855f7); transition: width 0.5s; }
+    .level-exp { font-size: 10px; color: #666; margin-top: 5px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+    .stat-item { text-align: center; padding: 8px; background: rgba(0,0,0,0.35); border-radius: 6px; }
+    .stat-value { font-size: 18px; font-weight: bold; color: #5ac8fa; }
+    .stat-value.streak { color: #ffd700; }
+    .stat-value.acc { color: #34c759; }
+    .stat-label { font-size: 8px; color: #555; text-transform: uppercase; }
+
+    .btn {
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s;
+      color: white;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+    .btn-primary { background: linear-gradient(135deg, #5ac8fa, #4ab8ea); }
+    .btn-danger { background: linear-gradient(135deg, #ff6b6b, #ee5555); }
+
+    #right-panel {
+      position: fixed;
+      right: 15px;
+      top: 15px;
+      width: 320px;
+      max-height: calc(100vh - 30px);
+      overflow-y: auto;
+      padding: 16px;
+      background: rgba(8, 12, 28, 0.94);
+      color: #fff;
+      border-radius: 14px;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(90, 200, 250, 0.25);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    }
+    
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(90, 200, 250, 0.15); }
+    .panel-title { font-size: 15px; font-weight: bold; color: #5ac8fa; }
+
+    .mode-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+    .mode-tab {
+      flex: 1; padding: 9px 6px; font-size: 11px; font-weight: 600;
+      border: 2px solid rgba(90, 200, 250, 0.25); border-radius: 7px;
+      cursor: pointer; transition: all 0.25s; background: transparent; color: #5ac8fa; text-align: center;
+    }
+    .mode-tab:hover { background: rgba(90, 200, 250, 0.08); }
+    .mode-tab.active { background: #5ac8fa; color: #000; border-color: #5ac8fa; }
+
+    .quiz-section {
+      background: rgba(168, 85, 247, 0.08);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      border-radius: 10px; padding: 14px; margin-bottom: 12px; display: none;
+    }
+    .quiz-section.active { display: block; }
+    .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .quiz-title { color: #a855f7; font-weight: 600; font-size: 13px; }
+    .quiz-question { font-size: 14px; color: #fff; margin-bottom: 12px; line-height: 1.6; padding: 10px; background: rgba(0,0,0,0.35); border-radius: 7px; }
+    
+    .move-hl { display: inline-block; padding: 2px 9px; border-radius: 5px; font-weight: bold; font-family: 'Monaco', monospace; font-size: 15px; margin: 0 2px; }
+    .move-hl.R { background: rgba(255, 51, 51, 0.25); color: #ff4444; }
+    .move-hl.L { background: rgba(255, 140, 0, 0.25); color: #ff9500; }
+    .move-hl.U { background: rgba(255, 255, 255, 0.2); color: #ffffff; }
+    .move-hl.D { background: rgba(255, 238, 0, 0.25); color: #ffcc00; }
+    .move-hl.F { background: rgba(0, 204, 68, 0.25); color: #34c759; }
+    .move-hl.B { background: rgba(51, 102, 255, 0.25); color: #5ac8fa; }
+    
+    .quiz-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .quiz-option {
+      padding: 12px 10px; background: rgba(0,0,0,0.4); border: 2px solid rgba(168, 85, 247, 0.25);
+      border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
+      font-size: 15px; font-weight: bold; font-family: 'Monaco', monospace;
+    }
+    .quiz-option:hover:not(.disabled) { background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.5); transform: scale(1.02); }
+    .quiz-option.correct { background: rgba(52, 199, 89, 0.3) !important; border-color: #34c759 !important; }
+    .quiz-option.wrong { background: rgba(255, 100, 100, 0.3) !important; border-color: #ff6b6b !important; }
+    .quiz-option.disabled { cursor: not-allowed; opacity: 0.5; }
+    
+    .quiz-result { margin-top: 12px; padding: 10px; border-radius: 7px; text-align: center; display: none; font-weight: 600; font-size: 12px; }
+    .quiz-result.show { display: block; }
+    .quiz-result.correct { background: rgba(52, 199, 89, 0.15); color: #34c759; border: 1px solid rgba(52, 199, 89, 0.3); }
+    .quiz-result.wrong { background: rgba(255, 100, 100, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 100, 100, 0.3); }
+
+    .explore-section { display: none; }
+    .explore-section.active { display: block; }
+    
+    .display-options { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .display-opt {
+      padding: 6px 10px; font-size: 10px; border: 1px solid rgba(90, 200, 250, 0.3);
+      border-radius: 15px; cursor: pointer; background: transparent; color: #5ac8fa; transition: all 0.2s;
+    }
+    .display-opt:hover { background: rgba(90, 200, 250, 0.1); }
+    .display-opt.active { background: rgba(90, 200, 250, 0.2); border-color: #5ac8fa; }
+
+    .piece-section { margin-bottom: 12px; }
+    .piece-title { font-size: 11px; color: #666; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+    .piece-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    .piece-btn {
+      padding: 7px 5px; font-size: 9px; font-weight: 600; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 5px; cursor: pointer; transition: all 0.2s; text-align: center;
+      background: rgba(0,0,0,0.3); color: #888;
+    }
+    .piece-btn:hover { background: rgba(90, 200, 250, 0.12); border-color: rgba(90, 200, 250, 0.35); color: #fff; }
+    .piece-btn.active { background: rgba(255, 204, 0, 0.2); border-color: #ffcc00; color: #ffcc00; box-shadow: 0 0 10px rgba(255, 204, 0, 0.25); }
+    .piece-btn.corner { border-color: rgba(255, 100, 100, 0.25); }
+    .piece-btn.edge { border-color: rgba(90, 200, 250, 0.25); }
+    .piece-btn.locked { opacity: 0.25; cursor: not-allowed; }
+
+    .tracking-info { background: rgba(255, 204, 0, 0.06); border: 1px solid rgba(255, 204, 0, 0.25); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .tracking-header { color: #ffcc00; font-weight: 600; font-size: 12px; margin-bottom: 8px; }
+    .tracking-positions { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 6px; }
+    .pos-box { text-align: center; }
+    .pos-label { font-size: 8px; color: #666; margin-bottom: 2px; }
+    .pos-value { font-size: 16px; font-weight: bold; font-family: 'Monaco', monospace; }
+    .pos-value.start { color: #5ac8fa; }
+    .pos-value.current { color: #ffcc00; }
+    .pos-value.ghost { color: #a855f7; }
+    .pos-arrow { color: #ffcc00; font-size: 16px; }
+
+    .rotation-section { margin-bottom: 10px; }
+    .rotation-title { font-size: 10px; color: #555; margin-bottom: 6px; }
+    .rotation-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .rot-btn {
+      padding: 10px 4px; font-size: 12px; font-weight: bold; font-family: 'Monaco', monospace;
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; cursor: pointer;
+      transition: all 0.15s; text-align: center; background: rgba(0,0,0,0.4);
+    }
+    .rot-btn:hover { transform: scale(1.08); }
+    .rot-btn.R { color: #ff4444; border-color: rgba(255, 68, 68, 0.35); }
+    .rot-btn.L { color: #ff9500; border-color: rgba(255, 149, 0, 0.35); }
+    .rot-btn.U { color: #ffffff; border-color: rgba(255, 255, 255, 0.35); }
+    .rot-btn.D { color: #ffcc00; border-color: rgba(255, 204, 0, 0.35); }
+    .rot-btn.F { color: #34c759; border-color: rgba(52, 199, 89, 0.35); }
+    .rot-btn.B { color: #5ac8fa; border-color: rgba(90, 200, 250, 0.35); }
+
+    .history-box { background: rgba(0,0,0,0.25); border-radius: 6px; padding: 8px; margin-bottom: 10px; }
+    .history-label { font-size: 9px; color: #555; margin-bottom: 4px; }
+    .history-moves { font-family: 'Monaco', monospace; font-size: 12px; color: #5ac8fa; min-height: 20px; line-height: 1.7; }
+    .history-moves .move { display: inline-block; background: rgba(90, 200, 250, 0.1); padding: 1px 5px; border-radius: 3px; margin: 1px; }
+
+    .action-row { display: flex; gap: 6px; }
+    .action-row .btn { flex: 1; padding: 9px; font-size: 11px; }
+
+    #feedback {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 56px; font-weight: bold; opacity: 0; pointer-events: none;
+      text-shadow: 0 0 40px currentColor; transition: all 0.25s; z-index: 1000;
+    }
+    #feedback.show { opacity: 1; }
+    #feedback.correct { color: #34c759; }
+    #feedback.wrong { color: #ff6b6b; }
+    #feedback.levelup { color: #ffcc00; font-size: 42px; }
+    #feedback.streak { color: #a855f7; font-size: 32px; }
+
+    #mode-indicator {
+      position: fixed; bottom: 12px; right: 12px; padding: 10px 16px;
+      background: rgba(8, 12, 28, 0.9); border-radius: 10px; color: #5ac8fa;
+      font-size: 12px; font-weight: 500; border: 1px solid rgba(90, 200, 250, 0.25);
+    }
+
+    #right-panel::-webkit-scrollbar { width: 4px; }
+    #right-panel::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    #right-panel::-webkit-scrollbar-thumb { background: rgba(90, 200, 250, 0.25); border-radius: 2px; }
+
+    @keyframes levelGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(255, 204, 0, 0.4); }
+      50% { box-shadow: 0 0 30px rgba(255, 204, 0, 0.7), 0 0 45px rgba(168, 85, 247, 0.4); }
+    }
+    .level-up { animation: levelGlow 0.8s ease-in-out 3; }
+  </style>
+</head>
+<body>
+
+<div id="left-panel">
+  <div class="card level-card" id="levelCard">
+    <div class="level-title">レベル</div>
+    <div class="level-name" id="levelName">初級</div>
+    <div class="level-progress"><div class="level-bar" id="levelBar"></div></div>
+    <div class="level-exp" id="levelExp">0 / 5 正解</div>
+  </div>
+  
+  <div class="card">
+    <h3>📊 成績</h3>
+    <div class="stats-grid">
+      <div class="stat-item"><div class="stat-value" id="statTotal">0</div><div class="stat-label">問題数</div></div>
+      <div class="stat-item"><div class="stat-value acc" id="statAcc">0%</div><div class="stat-label">正答率</div></div>
+      <div class="stat-item"><div class="stat-value streak" id="statStreak">0</div><div class="stat-label">連続</div></div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h3>🎮 操作</h3>
+    <span class="key">右ドラッグ</span> カメラ<br>
+    <span class="key">Space</span> 次の問題<br>
+    <span class="key">G</span> ゴースト<br>
+    <span class="key">R</span> リセット
+  </div>
+</div>
+
+<div id="right-panel">
+  <div class="panel-header">
+    <div class="panel-title">🧠 空間認知マスター</div>
+  </div>
+  
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="quiz">🎯 クイズ</div>
+    <div class="mode-tab" data-mode="explore">🔍 探索</div>
+  </div>
+  
+  <div class="quiz-section active" id="quizSection">
+    <div class="quiz-header">
+      <div class="quiz-title">🎯 移動先予測</div>
+      <div style="font-size: 11px; color: #888;">問題 <span id="quizNum">1</span></div>
+    </div>
+    <div class="quiz-question">
+      <span id="qPiece" style="color: #ffcc00; font-weight: bold;">URF</span> は
+      <span class="move-hl R" id="qMove">R</span> 後どこへ？
+    </div>
+    <div class="quiz-options" id="quizOptions"></div>
+    <div class="quiz-result" id="quizResult"><span id="quizResultText"></span></div>
+    <div class="action-row" style="margin-top: 12px;">
+      <button class="btn btn-primary" id="nextQuizBtn">次の問題 →</button>
+    </div>
+  </div>
+  
+  <div class="explore-section" id="exploreSection">
+    <div class="display-options">
+      <div class="display-opt active" data-opt="ghost">👻 ゴースト</div>
+      <div class="display-opt active" data-opt="wire">🔲 ワイヤー</div>
+      <div class="display-opt active" data-opt="line">📐 軌道線</div>
+    </div>
+    
+    <div class="piece-section">
+      <div class="piece-title"><span style="color: #ff6b6b;">●</span> コーナー</div>
+      <div class="piece-grid" id="cornerGrid"></div>
+    </div>
+    
+    <div class="piece-section">
+      <div class="piece-title"><span style="color: #5ac8fa;">●</span> エッジ</div>
+      <div class="piece-grid" id="edgeGrid"></div>
+    </div>
+    
+    <div class="tracking-info" id="trackingInfo" style="display: none;">
+      <div class="tracking-header">🎯 追跡中</div>
+      <div class="tracking-positions">
+        <div class="pos-box"><div class="pos-label">開始</div><div class="pos-value start" id="posStart">-</div></div>
+        <div class="pos-arrow">→</div>
+        <div class="pos-box"><div class="pos-label">現在</div><div class="pos-value current" id="posCurrent">-</div></div>
+        <div class="pos-arrow" id="ghostArrow" style="display:none">→</div>
+        <div class="pos-box" id="ghostBox" style="display:none"><div class="pos-label">予測</div><div class="pos-value ghost" id="posGhost">-</div></div>
+      </div>
+    </div>
+    
+    <div class="rotation-section">
+      <div class="rotation-title">回転（ホバーで予測）</div>
+      <div class="rotation-grid" id="rotGrid"></div>
+    </div>
+    
+    <div class="history-box">
+      <div class="history-label">履歴</div>
+      <div class="history-moves" id="moveHistory">-</div>
+    </div>
+    
+    <div class="action-row">
+      <button class="btn btn-danger" id="resetBtn">🔄 リセット</button>
+      <button class="btn btn-primary" id="undoBtn">↩ 戻す</button>
+    </div>
+  </div>
+</div>
+
+<div id="feedback"></div>
+<div id="mode-indicator">🧠 空間認知マスター v2</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ========== データ ==========
+const LEVELS = [
+  { name: '初級', req: 5, corners: true, edges: false },
+  { name: '中級', req: 10, corners: true, edges: true },
+  { name: '上級', req: 15, corners: true, edges: true },
+  { name: 'マスター', req: 25, corners: true, edges: true }
+];
+
+const POS = {
+  URF:{x:1,y:1,z:1}, UFL:{x:-1,y:1,z:1}, ULB:{x:-1,y:1,z:-1}, UBR:{x:1,y:1,z:-1},
+  DFR:{x:1,y:-1,z:1}, DLF:{x:-1,y:-1,z:1}, DBL:{x:-1,y:-1,z:-1}, DRB:{x:1,y:-1,z:-1},
+  UF:{x:0,y:1,z:1}, UR:{x:1,y:1,z:0}, UB:{x:0,y:1,z:-1}, UL:{x:-1,y:1,z:0},
+  FR:{x:1,y:0,z:1}, FL:{x:-1,y:0,z:1}, BR:{x:1,y:0,z:-1}, BL:{x:-1,y:0,z:-1},
+  DF:{x:0,y:-1,z:1}, DR:{x:1,y:-1,z:0}, DB:{x:0,y:-1,z:-1}, DL:{x:-1,y:-1,z:0}
+};
+
+const CORNERS = ['URF','UFL','ULB','UBR','DFR','DLF','DBL','DRB'];
+const EDGES = ['UF','UR','UB','UL','FR','FL','BR','BL','DF','DR','DB','DL'];
+
+const CYCLES = {
+  R: { c:['URF','UBR','DRB','DFR'], e:['UR','BR','DR','FR'] },
+  "R'": { c:['URF','DFR','DRB','UBR'], e:['UR','FR','DR','BR'] },
+  L: { c:['UFL','DLF','DBL','ULB'], e:['UL','FL','DL','BL'] },
+  "L'": { c:['UFL','ULB','DBL','DLF'], e:['UL','BL','DL','FL'] },
+  U: { c:['URF','UFL','ULB','UBR'], e:['UF','UL','UB','UR'] },
+  "U'": { c:['URF','UBR','ULB','UFL'], e:['UF','UR','UB','UL'] },
+  D: { c:['DFR','DRB','DBL','DLF'], e:['DF','DR','DB','DL'] },
+  "D'": { c:['DFR','DLF','DBL','DRB'], e:['DF','DL','DB','DR'] },
+  F: { c:['URF','DFR','DLF','UFL'], e:['UF','FR','DF','FL'] },
+  "F'": { c:['URF','UFL','DLF','DFR'], e:['UF','FL','DF','FR'] },
+  B: { c:['UBR','ULB','DBL','DRB'], e:['UB','BL','DB','BR'] },
+  "B'": { c:['UBR','DRB','DBL','ULB'], e:['UB','BR','DB','BL'] }
+};
+
+const MOVES = ['R',"R'",'L',"L'",'U',"U'",'D',"D'",'F',"F'",'B',"B'"];
+const COL = { R:0xff4444, L:0xff9500, U:0xffffff, D:0xffcc00, F:0x34c759, B:0x5ac8fa, I:0x151520 };
+
+// ========== 状態 ==========
+let lvl=0, exp=0, total=0, correct=0, streak=0;
+let mode='quiz', showGhost=true, showWire=true, showLine=true;
+let qPiece='', qMove='', qAns='', qDone=false;
+
+// ========== Three.js ==========
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050510);
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.DirectionalLight(0xffffff, 0.75).translateX(10).translateY(12).translateZ(8));
+scene.add(new THREE.DirectionalLight(0x5588ff, 0.35).translateX(-8).translateY(-4).translateZ(-8));
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+// ========== カメラ ==========
+const Cam = {
+  dist: 13,
+  rot: new THREE.Quaternion(),
+  init() {
+    this.rot.setFromEuler(new THREE.Euler(-Math.PI/5, Math.PI/4, 0, 'YXZ'));
+    this.update();
+  },
+  ball(x, y) {
+    const r = renderer.domElement.getBoundingClientRect();
+    const v = new THREE.Vector3((x-r.width/2-r.left)/(r.width/2), (r.height/2+r.top-y)/(r.height/2), 0);
+    const l = v.length();
+    if(l>1) v.normalize(); else v.z = Math.sqrt(1-l*l);
+    return v;
+  },
+  rotate(px,py,cx,cy) {
+    const p=this.ball(px,py), c=this.ball(cx,cy);
+    const axis = new THREE.Vector3().crossVectors(c,p).normalize();
+    const ang = Math.acos(Math.min(1, p.dot(c))) * 1.5;
+    if(axis.length()>0.001 && ang>0.001) {
+      this.rot.multiply(new THREE.Quaternion().setFromAxisAngle(axis, ang)).normalize();
+      this.update();
+    }
+  },
+  update() {
+    camera.position.copy(new THREE.Vector3(0,0,this.dist).applyQuaternion(this.rot));
+    camera.up.copy(new THREE.Vector3(0,1,0).applyQuaternion(this.rot));
+    camera.lookAt(0,0,0);
+  },
+  zoom(d) { this.dist = Math.max(6, Math.min(28, this.dist*(1+d*0.001))); this.update(); }
+};
+Cam.init();
+
+// ========== キューブ ==========
+const cubeGroup = new THREE.Group();
+scene.add(cubeGroup);
+
+let wires=[], tracked=null, ghost=null, trajLine=null;
+let rotating=false, history=[];
+
+function getName(p) {
+  const x=Math.round(p.x), y=Math.round(p.y), z=Math.round(p.z);
+  for(const [n,pos] of Object.entries(POS)) {
+    if(pos.x===x && pos.y===y && pos.z===z) return n;
+  }
+  return '';
+}
+
+function createWire(x,y,z) {
+  const g = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.92,0.92,0.92));
+  const m = new THREE.LineBasicMaterial({ color:0x4090cc, transparent:true, opacity:0.38 });
+  const w = new THREE.LineSegments(g, m);
+  w.position.set(x,y,z);
+  w.userData = { name: getName({x,y,z}) };
+  return w;
+}
+
+function createSolid(x,y,z, isTracked=false, isGhost=false) {
+  const sz = isGhost ? 0.86 : 0.93;
+  const g = new THREE.BoxGeometry(sz,sz,sz);
+  const mats = [
+    new THREE.MeshStandardMaterial({ color: x===1?COL.R:COL.I, transparent:isGhost, opacity:isGhost?0.38:1 }),
+    new THREE.MeshStandardMaterial({ color: x===-1?COL.L:COL.I, transparent:isGhost, opacity:isGhost?0.38:1 }),
+    new THREE.MeshStandardMaterial({ color: y===1?COL.U:COL.I, transparent:isGhost, opacity:isGhost?0.38:1 }),
+    new THREE.MeshStandardMaterial({ color: y===-1?COL.D:COL.I, transparent:isGhost, opacity:isGhost?0.38:1 }),
+    new THREE.MeshStandardMaterial({ color: z===1?COL.F:COL.I, transparent:isGhost, opacity:isGhost?0.38:1 }),
+    new THREE.MeshStandardMaterial({ color: z===-1?COL.B:COL.I, transparent:isGhost, opacity:isGhost?0.38:1 })
+  ];
+  if(isGhost) mats.forEach(m => { m.emissive = new THREE.Color(0x7722cc); m.emissiveIntensity = 0.5; });
+  
+  const mesh = new THREE.Mesh(g, mats);
+  mesh.position.set(x,y,z);
+  mesh.userData = { name: getName({x,y,z}), isTracked, isGhost };
+  
+  const edgeCol = isTracked ? 0xffcc00 : isGhost ? 0xa855f7 : 0x000000;
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(sz+0.02, sz+0.02, sz+0.02)),
+    new THREE.LineBasicMaterial({ color: edgeCol })
+  );
+  mesh.add(edges);
+  return mesh;
+}
+
+function createTrajectory(from, to) {
+  const mid = new THREE.Vector3(
+    (from.x+to.x)/2,
+    Math.max(from.y, to.y) + 0.8,
+    (from.z+to.z)/2
+  );
+  const curve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(from.x, from.y, from.z),
+    mid,
+    new THREE.Vector3(to.x, to.y, to.z)
+  );
+  const pts = curve.getPoints(20);
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineDashedMaterial({ color:0xffcc00, dashSize:0.15, gapSize:0.1, transparent:true, opacity:0.7 });
+  const line = new THREE.Line(geo, mat);
+  line.computeLineDistances();
+  return line;
+}
+
+function initCube() {
+  wires.forEach(w => cubeGroup.remove(w));
+  if(tracked) cubeGroup.remove(tracked);
+  if(ghost) cubeGroup.remove(ghost);
+  if(trajLine) cubeGroup.remove(trajLine);
+  wires=[]; tracked=null; ghost=null; trajLine=null;
+  
+  const outer = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(3.05,3.05,3.05)),
+    new THREE.LineBasicMaterial({ color:0x2a4060, transparent:true, opacity:0.2 })
+  );
+  cubeGroup.add(outer);
+  wires.push(outer);
+  
+  for(let x=-1; x<=1; x++) {
+    for(let y=-1; y<=1; y++) {
+      for(let z=-1; z<=1; z++) {
+        if(x===0 && y===0 && z===0) continue;
+        const w = createWire(x,y,z);
+        w.visible = showWire;
+        cubeGroup.add(w);
+        wires.push(w);
+      }
+    }
+  }
+  history=[];
+  updateHistoryUI();
+}
+
+initCube();
+
+// ========== 追跡・ゴースト ==========
+function track(name) {
+  clearTrack();
+  const pos = POS[name];
+  if(!pos) return;
+  
+  tracked = createSolid(pos.x, pos.y, pos.z, true);
+  cubeGroup.add(tracked);
+  wires.forEach(w => { if(w.userData.name === name) w.visible = false; });
+  document.querySelectorAll('.piece-btn').forEach(b => b.classList.toggle('active', b.dataset.p === name));
+  updateTrackInfo();
+}
+
+function clearTrack() {
+  if(tracked) cubeGroup.remove(tracked);
+  if(ghost) cubeGroup.remove(ghost);
+  if(trajLine) cubeGroup.remove(trajLine);
+  tracked=null; ghost=null; trajLine=null;
+  wires.forEach(w => { if(w.userData.name) w.visible = showWire; });
+  document.querySelectorAll('.piece-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('trackingInfo').style.display = 'none';
+}
+
+function updateGhost(move=null) {
+  if(ghost) { cubeGroup.remove(ghost); ghost=null; }
+  if(trajLine) { cubeGroup.remove(trajLine); trajLine=null; }
+  
+  document.getElementById('ghostArrow').style.display = 'none';
+  document.getElementById('ghostBox').style.display = 'none';
+  
+  if(!tracked || !showGhost) return;
+  
+  const curName = getName(tracked.position);
+  const isCorner = curName.length === 3;
+  
+  if(!move) {
+    for(const m of MOVES) {
+      const cycle = CYCLES[m];
+      if((isCorner ? cycle.c : cycle.e).includes(curName)) { move = m; break; }
+    }
+  }
+  if(!move) return;
+  
+  const cycle = CYCLES[move];
+  const arr = isCorner ? cycle.c : cycle.e;
+  const idx = arr.indexOf(curName);
+  if(idx === -1) return;
+  
+  const nextName = arr[(idx+1) % arr.length];
+  const nextPos = POS[nextName];
+  
+  ghost = createSolid(nextPos.x, nextPos.y, nextPos.z, false, true);
+  cubeGroup.add(ghost);
+  
+  if(showLine) {
+    trajLine = createTrajectory(tracked.position, ghost.position);
+    cubeGroup.add(trajLine);
+  }
+  
+  document.getElementById('ghostArrow').style.display = 'block';
+  document.getElementById('ghostBox').style.display = 'block';
+  document.getElementById('posGhost').textContent = nextName;
+}
+
+function updateTrackInfo() {
+  const info = document.getElementById('trackingInfo');
+  if(!tracked) { info.style.display = 'none'; return; }
+  info.style.display = 'block';
+  document.getElementById('posStart').textContent = tracked.userData.name;
+  document.getElementById('posCurrent').textContent = getName(tracked.position);
+}
+
+// ========== 回転ロジック ==========
+function snap(v) { return Math.round(v); }
+
+function rotateFace(axis, layer, dir) {
+  return new Promise(resolve => {
+    if(rotating) { resolve(); return; }
+    rotating = true;
+    
+    const allPieces = [...wires.filter(w=>w.userData.name), tracked, ghost].filter(Boolean);
+    const targets = allPieces.filter(c => Math.abs(snap(c.position[axis]) - layer) < 0.1);
+    
+    if(!targets.length) { rotating = false; resolve(); return; }
+    
+    // フラッシュ
+    if(tracked && targets.includes(tracked)) {
+      const edge = tracked.children[0];
+      if(edge && edge.material) edge.material.color.setHex(0xffffff);
+      setTimeout(() => { if(edge && edge.material) edge.material.color.setHex(0xffcc00); }, 80);
+    }
+    
+    const group = new THREE.Group();
+    cubeGroup.add(group);
+    targets.forEach(c => { cubeGroup.remove(c); group.add(c); });
+    
+    const targetAngle = dir * Math.PI / 2;
+    const duration = 180;
+    const startTime = Date.now();
+    
+    function animate() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      group.rotation[axis] = targetAngle * eased;
+      
+      if(progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        group.rotation[axis] = targetAngle;
+        
+        targets.forEach(c => {
+          const wp = new THREE.Vector3();
+          c.getWorldPosition(wp);
+          c.position.set(snap(wp.x), snap(wp.y), snap(wp.z));
+          
+          if(c.quaternion) {
+            const wq = new THREE.Quaternion();
+            c.getWorldQuaternion(wq);
+            const euler = new THREE.Euler().setFromQuaternion(wq);
+            const snapAng = v => Math.round(v / (Math.PI/2)) * (Math.PI/2);
+            c.quaternion.setFromEuler(new THREE.Euler(snapAng(euler.x), snapAng(euler.y), snapAng(euler.z)));
+          }
+          
+          c.userData.name = getName(c.position);
+          group.remove(c);
+          cubeGroup.add(c);
+        });
+        
+        cubeGroup.remove(group);
+        rotating = false;
+        updateTrackInfo();
+        updateGhost();
+        resolve();
+      }
+    }
+    
+    animate();
+  });
+}
+
+function parseMove(move) {
+  const face = move[0];
+  const map = { R:['x',1,1], L:['x',-1,-1], U:['y',1,1], D:['y',-1,-1], F:['z',1,1], B:['z',-1,-1] };
+  const [axis, layer, baseDir] = map[face];
+  const dir = move.includes("'") ? -1 : 1;
+  return { axis, layer, dir: dir * baseDir };
+}
+
+async function execMove(move, record=true) {
+  const { axis, layer, dir } = parseMove(move);
+  await rotateFace(axis, layer, dir);
+  if(record) {
+    history.push(move);
+    updateHistoryUI();
+  }
+}
+
+async function undo() {
+  if(!history.length || rotating) return;
+  const last = history.pop();
+  const rev = last.includes("'") ? last.replace("'","") : last+"'";
+  await execMove(rev, false);
+  updateHistoryUI();
+}
+
+function updateHistoryUI() {
+  const el = document.getElementById('moveHistory');
+  el.innerHTML = history.length ? history.map(m=>`<span class="move">${m}</span>`).join('') : '-';
+}
+
+// ========== クイズ ==========
+function genQuiz() {
+  const lv = LEVELS[lvl];
+  let pieces = lv.corners ? [...CORNERS] : [];
+  if(lv.edges) pieces = pieces.concat(EDGES);
+  
+  qPiece = pieces[Math.floor(Math.random() * pieces.length)];
+  const isCorner = qPiece.length === 3;
+  const valid = MOVES.filter(m => (isCorner ? CYCLES[m].c : CYCLES[m].e).includes(qPiece));
+  qMove = valid[Math.floor(Math.random() * valid.length)];
+  
+  const cycle = CYCLES[qMove];
+  const arr = isCorner ? cycle.c : cycle.e;
+  qAns = arr[(arr.indexOf(qPiece) + 1) % arr.length];
+  
+  const all = isCorner ? CORNERS : EDGES;
+  const opts = [qAns];
+  while(opts.length < 4) {
+    const d = all[Math.floor(Math.random() * all.length)];
+    if(!opts.includes(d)) opts.push(d);
+  }
+  opts.sort(() => Math.random() - 0.5);
+  
+  document.getElementById('qPiece').textContent = qPiece;
+  const mEl = document.getElementById('qMove');
+  mEl.textContent = qMove;
+  mEl.className = 'move-hl ' + qMove[0];
+  document.getElementById('quizNum').textContent = total + 1;
+  
+  const oEl = document.getElementById('quizOptions');
+  oEl.innerHTML = opts.map(o => `<div class="quiz-option" data-a="${o}">${o}</div>`).join('');
+  oEl.querySelectorAll('.quiz-option').forEach(opt => {
+    opt.addEventListener('click', () => checkAns(opt.dataset.a));
+  });
+  
+  document.getElementById('quizResult').classList.remove('show');
+  qDone = false;
+  
+  initCube();
+  track(qPiece);
+  if(showGhost) updateGhost(qMove);
+}
+
+function checkAns(sel) {
+  if(qDone || rotating) return;
+  qDone = true;
+  total++;
+  
+  const ok = sel === qAns;
+  
+  document.querySelectorAll('.quiz-option').forEach(o => {
+    o.classList.add('disabled');
+    if(o.dataset.a === qAns) o.classList.add('correct');
+    if(o.dataset.a === sel && !ok) o.classList.add('wrong');
+  });
+  
+  const rEl = document.getElementById('quizResult');
+  const rTxt = document.getElementById('quizResultText');
+  
+  if(ok) {
+    correct++; streak++; exp++;
+    rEl.className = 'quiz-result show correct';
+    rTxt.textContent = `✓ 正解！ ${qPiece} → ${qMove} → ${qAns}`;
+    feedback('correct', '✓');
+    if(streak === 3) feedback('streak', '🔥 3連続!');
+    if(streak === 5) feedback('streak', '🔥 5連続!');
+    if(streak === 10) feedback('streak', '🔥 10連続!');
+    checkLvlUp();
+  } else {
+    streak = 0;
+    rEl.className = 'quiz-result show wrong';
+    rTxt.textContent = `✗ 正解は ${qAns}`;
+    feedback('wrong', '✗');
+  }
+  
+  setTimeout(() => execMove(qMove), 400);
+  updateStats();
+}
+
+function checkLvlUp() {
+  if(exp >= LEVELS[lvl].req && lvl < LEVELS.length - 1) {
+    lvl++; exp = 0;
+    feedback('levelup', `🎉 ${LEVELS[lvl].name}昇格!`);
+    document.getElementById('levelCard').classList.add('level-up');
+    setTimeout(() => document.getElementById('levelCard').classList.remove('level-up'), 2500);
+    updateLvlUI();
+    updatePieceBtns();
+  }
+  updateLvlUI();
+}
+
+function feedback(type, text) {
+  const el = document.getElementById('feedback');
+  el.textContent = text;
+  el.className = 'show ' + type;
+  setTimeout(() => el.className = '', 1200);
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statAcc').textContent = total ? Math.round(correct/total*100)+'%' : '0%';
+  document.getElementById('statStreak').textContent = streak;
+}
+
+function updateLvlUI() {
+  const lv = LEVELS[lvl];
+  document.getElementById('levelName').textContent = lv.name;
+  document.getElementById('levelBar').style.width = Math.min(exp/lv.req*100, 100) + '%';
+  document.getElementById('levelExp').textContent = `${exp} / ${lv.req} 正解`;
+}
+
+function updatePieceBtns() {
+  const lv = LEVELS[lvl];
+  document.querySelectorAll('#edgeGrid .piece-btn').forEach(b => b.classList.toggle('locked', !lv.edges));
+}
+
+// ========== モード ==========
+function switchMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === m));
+  document.getElementById('quizSection').classList.toggle('active', m === 'quiz');
+  document.getElementById('exploreSection').classList.toggle('active', m === 'explore');
+  initCube();
+  if(m === 'quiz') genQuiz();
+}
+
+// ========== UI構築 ==========
+document.getElementById('cornerGrid').innerHTML = CORNERS.map(c => `<div class="piece-btn corner" data-p="${c}">${c}</div>`).join('');
+document.getElementById('edgeGrid').innerHTML = EDGES.map(e => `<div class="piece-btn edge" data-p="${e}">${e}</div>`).join('');
+document.getElementById('rotGrid').innerHTML = MOVES.map(m => `<div class="rot-btn ${m[0]}" data-m="${m}">${m}</div>`).join('');
+
+// ========== イベント ==========
+document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => switchMode(t.dataset.mode)));
+
+document.getElementById('cornerGrid').addEventListener('click', e => {
+  if(e.target.classList.contains('piece-btn') && !e.target.classList.contains('locked')) track(e.target.dataset.p);
+});
+
+document.getElementById('edgeGrid').addEventListener('click', e => {
+  if(e.target.classList.contains('piece-btn') && !e.target.classList.contains('locked')) track(e.target.dataset.p);
+});
+
+document.getElementById('rotGrid').addEventListener('click', async e => {
+  if(e.target.classList.contains('rot-btn') && !rotating) await execMove(e.target.dataset.m);
+});
+
+document.getElementById('rotGrid').addEventListener('mouseover', e => {
+  if(e.target.classList.contains('rot-btn') && tracked && showGhost) updateGhost(e.target.dataset.m);
+});
+
+document.querySelectorAll('.display-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    opt.classList.toggle('active');
+    const o = opt.dataset.opt;
+    if(o === 'ghost') { showGhost = opt.classList.contains('active'); updateGhost(); }
+    if(o === 'wire') { showWire = opt.classList.contains('active'); wires.forEach(w => { if(w.userData.name) w.visible = showWire; }); }
+    if(o === 'line') { showLine = opt.classList.contains('active'); updateGhost(); }
+  });
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => { initCube(); clearTrack(); });
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('nextQuizBtn').addEventListener('click', genQuiz);
+
+// マウス
+let dragging = false, lastM = { x:0, y:0 };
+renderer.domElement.addEventListener('mousedown', e => {
+  if(e.button === 2) { dragging = true; lastM = { x: e.clientX, y: e.clientY }; }
+});
+renderer.domElement.addEventListener('mousemove', e => {
+  if(dragging) { Cam.rotate(lastM.x, lastM.y, e.clientX, e.clientY); lastM = { x: e.clientX, y: e.clientY }; }
+});
+renderer.domElement.addEventListener('mouseup', () => dragging = false);
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+renderer.domElement.addEventListener('wheel', e => Cam.zoom(e.deltaY * 0.1));
+
+// キーボード
+document.addEventListener('keydown', async e => {
+  const k = e.key.toLowerCase();
+  if(k === ' ') { e.preventDefault(); if(mode === 'quiz') genQuiz(); }
+  if(k === 'g') document.querySelector('[data-opt="ghost"]')?.click();
+  if(k === 'w') document.querySelector('[data-opt="wire"]')?.click();
+  if(k === 'r') { initCube(); if(mode === 'quiz') genQuiz(); else clearTrack(); }
+  if(k === 'z') undo();
+});
+
+// リサイズ
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ========== アニメーションループ ==========
+let time = 0;
+function render() {
+  requestAnimationFrame(render);
+  time += 0.016;
+  
+  // 追跡ピースのパルス
+  if(tracked) {
+    const edge = tracked.children[0];
+    if(edge && edge.material) {
+      edge.material.color.setHSL(0.13, 1, 0.5 + 0.12 * Math.sin(time * 4));
+    }
+  }
+  
+  // ゴーストのパルス
+  if(ghost) {
+    ghost.material.forEach(m => m.opacity = 0.3 + 0.12 * Math.sin(time * 3));
+    const edge = ghost.children[0];
+    if(edge && edge.material) {
+      edge.material.color.setHSL(0.78, 0.8, 0.55 + 0.1 * Math.sin(time * 3));
+    }
+  }
+  
+  // 軌道線のパルス
+  if(trajLine && trajLine.material) {
+    trajLine.material.opacity = 0.5 + 0.2 * Math.sin(time * 2);
+  }
+  
+  renderer.render(scene, camera);
+}
+
+// 初期化
+updateLvlUI();
+updateStats();
+updatePieceBtns();
+genQuiz();
+render();
+</script>
+</body>
+</html>
